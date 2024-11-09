@@ -566,12 +566,14 @@ class ResNet50withCovReg(nn.Module):
         super(ResNet50withCovReg, self).__init__()
         self.device = device
         self.num_labels = output_dim
-        self.feature_size = reduce_dim
+        # self.feature_size = reduce_dim
+        self.feature_size = self.resnet50.fc.in_features
 
         self.resnet50 = torchvision.models.resnet50(pretrained=True)
-        self.resnet50.fc = nn.Linear(self.resnet50.fc.in_features, reduce_dim)
-        self.activation = nn.Tanh()
-        self.classifier = nn.Linear(reduce_dim, output_dim)
+        self.resnet50.fc = nn.Linear(self.resnet50.fc.in_features, output_dim)
+        # self.resnet50.fc = nn.Linear(self.resnet50.fc.in_features, reduce_dim)
+        # self.activation = nn.Tanh()
+        # self.classifier = nn.Linear(reduce_dim, output_dim)
         self.crossEntropyLoss = nn.CrossEntropyLoss(reduction='none')
 
         self.mask = ~torch.eye(self.feature_size, dtype=bool).to(device)
@@ -584,8 +586,9 @@ class ResNet50withCovReg(nn.Module):
 
     def forward(self, x, labels=None, weights=None):
         feature = self.resnet50(x)
-        feature = self.activation(feature)
-        logits = self.classifier(feature)
+        # feature = self.activation(feature)
+        # logits = self.classifier(feature)
+        logits = feature
 
         total_loss = 0
         causal_regularization = None
@@ -610,7 +613,8 @@ class ResNet50withCovReg(nn.Module):
         if weights is not None:
             total_loss *= weights
 
-        total_loss = total_loss.mean()
+        total_loss = total_loss.mean() # For resnet
+        # total_loss = total_loss.sum() # For AFR
 
         return total_loss
 
