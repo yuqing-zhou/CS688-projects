@@ -6,8 +6,6 @@ import random
 import numpy as np
 import torch
 
-DATASET = 'civilcomments'
-
 DATASET_INFO = {
     'civilcomments': {
         'num_classes': 2,

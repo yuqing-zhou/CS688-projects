@@ -53,7 +53,7 @@ def train_civil(args):
     weight_decay = args.weight_decay
     load_best_model = args.load_best_model
 
-    root_dir = '../../data/'
+    root_dir = '../data/'
     data_dir = root_dir + 'datasets/'
     model_save_path = root_dir + f'models/{DATASET}/'
     if not os.path.exists(model_save_path):
@@ -540,7 +540,7 @@ def train_cv(args):
     seed = seeds[n_exp]
     set_seed(seed)
 
-    root_dir = '../../data/'
+    root_dir = '../data/'
     data_dir = os.path.join(root_dir, DATASET_INFO[DATASET]['dataset_path'])
     model_save_path = root_dir + f'models/{DATASET}/'
     if not os.path.exists(model_save_path):
