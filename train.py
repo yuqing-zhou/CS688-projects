@@ -67,10 +67,7 @@ def train_civil(args):
     print("Using device:", device)
 
     if finetune_flg == True:
-        if load_best_model:
-            load_model_path = model_save_path + f'best_model_{bert_version}.pth'
-        else:
-            load_model_path = model_save_path + f'final_model_{bert_version}.pth'
+        load_model_path = model_save_path + f'final_model_{bert_version}.pth'
         best_model_path = model_save_path + f'best_model_{bert_version}_{cpns_version}_{reweight_version}.pth'
         final_model_path = model_save_path + f'final_model_{bert_version}_{cpns_version}_{reweight_version}.pth'
         load_local_model = True
@@ -294,10 +291,7 @@ def train_nli(args):
     print("Using device:", device)
 
     if finetune_flg == True:
-        if load_best_model:
-            load_model_path = model_save_path + f'best_model_{bert_version}.pth'
-        else:
-            load_model_path = model_save_path + f'final_model_{bert_version}.pth'
+        load_model_path = model_save_path + f'final_model_{bert_version}.pth'
         best_model_path = model_save_path + f'best_model_{bert_version}_{cpns_version}_{reweight_version}.pth'
         final_model_path = model_save_path + f'final_model_{bert_version}_{cpns_version}_{reweight_version}.pth'
         load_local_model = True
