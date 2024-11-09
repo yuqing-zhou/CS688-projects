@@ -157,7 +157,7 @@ def train_civil(args):
 
     task_config.model_kwargs = {}
     task_config.model = 'bert-base-uncased'
-    train_data, val_data, test_data, reweighting_data = get_data(task_config, DATASET)
+    train_data, val_data, test_data, reweighting_data = get_datasets(task_config, DATASET)
     train_loader = get_train_loader("standard", train_data, batch_size=batch_size, uniform_over_groups=False)
     val_loader = get_eval_loader("standard", val_data, batch_size=batch_size)
     test_loader = get_eval_loader("standard", test_data, batch_size=batch_size)
@@ -275,7 +275,7 @@ def train_nli(args):
     weight_decay = args.weight_decay
     load_best_model = args.load_best_model
 
-    root_dir = '../../data/'
+    root_dir = '../data/'
     if DATASET == 'civilcomments':
         data_dir = root_dir + 'datasets/'
     elif DATASET == 'MultiNLI':
@@ -350,13 +350,13 @@ def train_nli(args):
     wandb.define_metric("Best Validation Accuracy", step_metric='epoch')
     wandb.define_metric("Best Validation Worst Group Accuracy", step_metric='epoch')
 
+    model_config = BertConfig.from_pretrained(model_name, num_labels=num_classes)
     model = BertClassifierWithCovReg(model_name, num_labels=num_classes, feature_size=feature_size, device=device,
                                      reg=reg_disentangle, reg_causal=reg_causal, disentangle_en=disentangle_en,
-                                     counterfactual_en=counterfactual_en).to(device)
+                                     counterfactual_en=counterfactual_en, config=model_config).to(device)
 
     if load_local_model:
         model.load_state_dict(torch.load(load_model_path, map_location=device))
-        model = model_parameters_freeze(model)
     # tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
@@ -387,7 +387,7 @@ def train_nli(args):
             augment_data=False,
             fraction=1.0,
         )
-    train_data, val_data, test_data = get_data(task_config, DATASET, train=True)
+    train_data, val_data, test_data = get_datasets(task_config, DATASET, train=True)
 
     if args.dfr_reweighting_drop:
         idx = train_data.dataset.indices.copy()
@@ -401,7 +401,7 @@ def train_nli(args):
 
         train_data.dataset = torch.utils.data.dataset.Subset(train_data.dataset.dataset, indices=train_idx)
 
-    loader_kwargs = {'batch_size': batch_size, 'num_workers': 4, 'pin_memory': True}
+    loader_kwargs = {'batch_size': batch_size, 'num_workers': 0, 'pin_memory': True}
     train_loader = get_data_loader(DATASET, train_data, task_config, train=True, **loader_kwargs)
     val_loader = get_data_loader(DATASET, val_data, task_config, train=False, **loader_kwargs)
     test_loader = get_data_loader(DATASET, test_data, task_config, train=False, **loader_kwargs)
@@ -436,6 +436,9 @@ def train_nli(args):
             all_train_y_true = torch.cat(all_train_y_true, axis=0)
 
             total_weights = compute_weights(all_train_logits, all_train_y_true, gamma, True)
+
+    if load_local_model:
+        model = model_parameters_freeze(model)
 
     for epoch in range(n_epochs):
         model.train()

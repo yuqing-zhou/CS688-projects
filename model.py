@@ -74,13 +74,12 @@ def load_data(file_path, batch_size=32, transform=None, shuffle=True):
 
 class BertClassifierWithCovReg(BertPreTrainedModel):
     def __init__(self, model_name, num_labels, feature_size, device, reg, reg_causal=0, disentangle_en=False,
-                 counterfactual_en=False):
-        super().__init__()
-        self.device = device
+                 counterfactual_en=False, config=None):
+        super().__init__(config)
+        self.model_device = device
         self.num_labels = num_labels
         # self.feature_size = feature_size
 
-        config = BertConfig.from_pretrained(model_name, num_labels=num_labels)
 
         self.bert = BertModel.from_pretrained(model_name, from_tf=False, config=config)
         # self.linear = nn.Linear(self.bert.config.hidden_size, self.feature_size)
@@ -161,7 +160,7 @@ class BertClassifierWithCovReg(BertPreTrainedModel):
         prob_sub = F.softmax(logits_counterfactual, dim=-1)[torch.arange(labels.shape[0]), labels]
 
         z = prob_raw - prob_sub + 1
-        z = torch.where(z > 1, z, torch.tensor(1.0).to(self.device)).view(-1, self.feature_size)
+        z = torch.where(z > 1, z, torch.tensor(1.0).to(self.model_device)).view(-1, self.feature_size)
         log_cpns = torch.mean(torch.log(z), dim=-1)
         causal_constraints = -log_cpns
 
@@ -329,7 +328,7 @@ def get_mnli_data(args, train=False, return_full_dataset=False):
     return train_data, val_data, test_data
 
 
-def get_data(task_config, dataset, train=False, return_full_dataset=False):
+def get_datasets(task_config, dataset, train=False, return_full_dataset=False):
     if dataset == 'civilcomments':
         return get_civil_data(task_config, dataset)
 
@@ -525,6 +524,7 @@ def evaluation_nli(model, dataset_n_groups, dataloader, device):
             all_y_true.append(labels.cpu())
             all_group_idx.append(group_ids.cpu())
             all_losses.append(loss.cpu())
+
 
         all_logits = torch.cat(all_logits, axis=0)
         all_predictions = torch.cat(all_predictions, axis=0)

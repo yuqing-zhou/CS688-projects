@@ -8,20 +8,20 @@ def main():
     dataset = 'MultiNLI' #'waterbirds'
     args = SimpleNamespace(
         dataset_name=dataset,
-        bert_version=0,
-        cpns_version=1,
+        bert_version=1,
+        cpns_version=0,
         reweight_version=0,
         n_exp=0,
         model_name=DATASET_INFO[dataset]['model'],
 
         n_epochs=3,
-        batch_size=10,
-        feature_size=128,
+        batch_size=32,
+        feature_size=768,
 
         finetune_flg=False,
         reweight_flg=False,  # True
 
-        lr=3e-3,
+        lr=2e-5,
         momentum=0.9,
         weight_decay=0, #1e-4,
         reg_disentangle=0,
@@ -32,7 +32,8 @@ def main():
         reweighting_seed=1,
         dfr_reweighting_drop=True,
         max_grad_norm=1.0,
-        load_best_model=False
+        load_best_model=False,
+        warmup_steps=0
     )
     if args.dataset_name == 'civilcomments':
         train_civil(args)
