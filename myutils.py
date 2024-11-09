@@ -35,7 +35,7 @@ DATASET_INFO = {
     },
 }
 
-seeds = [42]
+seeds = [0, 1, 42]
 
 def set_seed(seed_value=42):
     random.seed(seed_value)  # Python random module
