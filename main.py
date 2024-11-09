@@ -77,7 +77,7 @@ def main():
         model_name=DATASET_INFO[dataset]['model'],
 
         n_epochs=50,
-        batch_size=32,
+        batch_size=2,
         feature_size=2048,
 
         finetune_flg=False,

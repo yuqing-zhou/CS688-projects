@@ -567,10 +567,10 @@ class ResNet50withCovReg(nn.Module):
         self.device = device
         self.num_labels = output_dim
         # self.feature_size = reduce_dim
-        self.feature_size = self.resnet50.fc.in_features
 
         self.resnet50 = torchvision.models.resnet50(pretrained=True)
         self.resnet50.fc = nn.Linear(self.resnet50.fc.in_features, output_dim)
+        self.feature_size = self.resnet50.fc.in_features
         # self.resnet50.fc = nn.Linear(self.resnet50.fc.in_features, reduce_dim)
         # self.activation = nn.Tanh()
         # self.classifier = nn.Linear(reduce_dim, output_dim)

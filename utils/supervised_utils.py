@@ -356,7 +356,7 @@ def eval_model(model, test_loader_dict, device):
             for batch in tqdm.tqdm(test_loader, bar_format=_bar_format):
                 x, y, group, *_ = batch
                 x, y = x.to(device), y.to(device)
-                logits = model(x)
+                logits, _ = model(x)
                 utils.update_dict(acc_groups, y, group, logits)
             results_dict[test_name] = acc_groups
     return results_dict
