@@ -351,13 +351,18 @@ def compute_group_avg(losses, group_idx, n_groups):
     return group_loss, group_count
 
 
-def model_parameters_freeze(model):
+def model_parameters_freeze(model, model_name='bert'):
     # Freeze layers of the pretrained model except the last linear layer
     for name, param in model.named_parameters():
         param.requires_grad = False
-    for param in model.classifier.parameters():
-        nn.init.normal_(param, mean=0, std=1)
-        param.requires_grad = True
+    if 'bert' in model_name:
+        for param in model.classifier.parameters():
+            nn.init.normal_(param, mean=0, std=1)
+            param.requires_grad = True
+    elif 'resnet' in model_name:
+        for param in model.resnet50.fc.parameters():
+            nn.init.normal_(param, mean=0, std=1)
+            param.requires_grad = True
 
     print("\nAfter fixing the layers before the last linear layer:")
     for name, param in model.named_parameters():

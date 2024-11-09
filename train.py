@@ -640,7 +640,7 @@ def train_cv(args):
             total_weights = compute_weights(all_train_logits, all_train_y_true, gamma, True, all_group_ids)
 
     if load_local_model:
-        model = model_parameters_freeze(model)
+        model = model_parameters_freeze(model, args.model_name)
 
     for epoch in range(n_epochs):
         model.train()
