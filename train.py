@@ -35,6 +35,8 @@ def train_civil(args):
     cpns_version = args.cpns_version
     reweight_version = args.reweight_version
     n_exp = args.n_exp
+    seed = seeds[n_exp]
+    set_seed(seed)
 
     reg_disentangle = args.reg_disentangle
     lr = args.lr
@@ -46,18 +48,18 @@ def train_civil(args):
 
     num_classes = DATASET_INFO[DATASET]['num_classes']
     feature_size = args.feature_size
-    total_weights = None
     finetune_flg = args.finetune_flg  # True #
-    reweight_flg = args.reweight_version  # True
+    reweight_flg = args.reweight_flg  # True
     weight_decay = args.weight_decay
+    load_best_model = args.load_best_model
 
-    seed = seeds[n_exp]
     root_dir = '../../data/'
     data_dir = root_dir + 'datasets/'
     model_save_path = root_dir + f'models/{DATASET}/'
     if not os.path.exists(model_save_path):
         os.makedirs(model_save_path)
 
+    total_weights = None
     best_model = None
     best_loss = float('inf')
     best_acc_wg = 0
@@ -65,17 +67,22 @@ def train_civil(args):
     print("Using device:", device)
 
     if finetune_flg == True:
-        load_model_path = model_save_path + f'best_model_{bert_version}.pth'
+        if load_best_model:
+            load_model_path = model_save_path + f'best_model_{bert_version}.pth'
+        else:
+            load_model_path = model_save_path + f'final_model_{bert_version}.pth'
         best_model_path = model_save_path + f'best_model_{bert_version}_{cpns_version}_{reweight_version}.pth'
+        final_model_path = model_save_path + f'final_model_{bert_version}_{cpns_version}_{reweight_version}.pth'
         load_local_model = True
         reg_causal = args.reg_causal
         disentangle_en = False
-        counterfactual_en = True
+        counterfactual_en = False #True
     else:
         best_model_path = model_save_path + f'best_model_{bert_version}.pth'
+        final_model_path = model_save_path + f'final_model_{bert_version}.pth'
         load_local_model = False
         reg_causal = 0
-        disentangle_en = True
+        disentangle_en = False
         counterfactual_en = False
 
     if reweight_flg == True:
@@ -118,37 +125,22 @@ def train_civil(args):
     wandb.define_metric("Best Validation Accuracy", step_metric='epoch')
     wandb.define_metric("Best Validation Worst Group Accuracy", step_metric='epoch')
 
-    set_seed(seed)
+    model_config = BertConfig.from_pretrained(model_name, num_labels=num_classes)
     model = BertClassifierWithCovReg(model_name, num_labels=num_classes, feature_size=feature_size, device=device,
                                      reg=reg_disentangle, reg_causal=reg_causal, disentangle_en=disentangle_en,
-                                     counterfactual_en=counterfactual_en).to(device)
+                                     counterfactual_en=counterfactual_en, config=model_config).to(device)
     if load_local_model:
         model.load_state_dict(torch.load(load_model_path, map_location=device))
-        model = model_parameters_freeze(model)
-    # tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
-
-    # args = SimpleNamespace(
-    #     root_dir=data_dir,
-    #     batch_size=batch_size,
-    #     dfr_reweighting_drop=True,
-    #     dfr_reweighting_seed=seed,
-    #     dfr_reweighting_frac=dfr_reweighting_frac,
-    # )
-    # wilds_config = SimpleNamespace(
-    #     algorithm='ERM',
-    #     load_featurizer_only=False,
-    #     pretrained_model_path=None,
-    #     **dataset_configs.dataset_defaults[DATASET],
-    # )
     dataset_configs.dataset_defaults[DATASET]['batch_size'] = batch_size
     task_config = SimpleNamespace(
         root_dir=data_dir,
         # batch_size=batch_size,
-        dfr_reweighting_drop=True,
-        dfr_reweighting_seed=seed,
-        dfr_reweighting_frac=dfr_reweighting_frac,
+        dfr_reweighting_drop=args.dfr_reweighting_drop,
+        dfr_reweighting_seed=args.reweighting_seed,
+        dfr_reweighting_frac=args.dfr_reweighting_frac,
         algorithm='ERM',
         load_featurizer_only=False,
         pretrained_model_path=None,
@@ -156,8 +148,10 @@ def train_civil(args):
     )
 
     task_config.model_kwargs = {}
-    task_config.model = 'bert-base-uncased'
+    task_config.model = args.model_name
     train_data, val_data, test_data, reweighting_data = get_datasets(task_config, DATASET)
+    if finetune_flg == True:
+        train_data = reweighting_data
     train_loader = get_train_loader("standard", train_data, batch_size=batch_size, uniform_over_groups=False)
     val_loader = get_eval_loader("standard", val_data, batch_size=batch_size)
     test_loader = get_eval_loader("standard", test_data, batch_size=batch_size)
@@ -185,6 +179,9 @@ def train_civil(args):
 
             total_weights = compute_weights(all_train_logits, all_train_y_true, gamma, True)
 
+    if load_local_model:
+        model = model_parameters_freeze(model)
+
     for epoch in range(n_epochs):
         model.train()
         total_train_loss = 0
@@ -205,6 +202,8 @@ def train_civil(args):
 
             logits, loss = model(input_ids, attention_mask, labels, weights)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+            scheduler.step()
             optimizer.step()
             accuracy = compute_accuracy(logits, labels)
             total_train_accuracy += accuracy.item()
@@ -229,6 +228,7 @@ def train_civil(args):
         wandb.log({"epoch": epoch, "Validation Loss": avg_val_loss, 'Validation Accuracy': val_results[0]['acc_avg'],
                    'Validation Worst Group Accuracy': val_results[0]['acc_wg']})
 
+        torch.save(model.state_dict(), final_model_path)
         if val_results[0]['acc_wg'] > best_acc_wg:
             best_accuracy = val_results[0]['acc_avg']
             best_acc_wg = val_results[0]['acc_wg']
@@ -240,7 +240,9 @@ def train_civil(args):
             wandb.log({"epoch": epoch, "Best Validation Loss": best_loss, "Best Validation Accuracy": best_accuracy,
                        "Best Validation Worst Group Accuracy": best_acc_wg})
 
-    model.load_state_dict(torch.load(best_model_path, map_location=device))
+    if load_best_model:
+        model.load_state_dict(torch.load(best_model_path, map_location=device))
+
     model.eval()
     test_results, avg_test_loss, avg_test_accuracy = evaluation(model, test_data, test_loader, device)
     print(f"Test Loss: {avg_test_loss}, Test Accuracy: {avg_test_accuracy}")
