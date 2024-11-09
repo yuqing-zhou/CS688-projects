@@ -72,34 +72,93 @@ class TrainLogger:
             log_results(self.logger, self.metrics, epoch=epoch, acc_groups=acc_groups,
                         tag=partition, use_wandb=self.use_wandb)
 
-    def log_results_save_chkp(self, model, epoch, results_dict):
+    def log_results_save_chkp(self, model, epoch, results_dict, finetune_flg=True):
         self.log_holdout_results(epoch, results_dict)
 
-        if "val" in results_dict.keys():
-            val_wga = get_results(results_dict["val"])["worst_accuracy"]
-            if val_wga > self.best_val_wga:
-                self.logger.info(f"\nNew best validation wga: {val_wga:1.3e}")
-                self.best_val_wga = val_wga
-                test_at_val = get_results(results_dict["test"])["worst_accuracy"]
-                self.logger.info(f"\nNew best test @ validation: {test_at_val:1.3e}")
-                self.metrics[epoch].update({"best_test_at_val": test_at_val})
+        if finetune_flg == True:
+            if "val" in results_dict.keys():
+                val_wga = get_results(results_dict["val"])["worst_accuracy"]
+                if val_wga > self.best_val_wga:
+                    self.logger.info(f"\nNew best validation wga: {val_wga:1.3e}")
+                    self.best_val_wga = val_wga
+
+                    test_results_at_val = get_results(results_dict['test'])
+                    test_wga_at_val = test_results_at_val["worst_accuracy"]
+                    test_mean_acc_at_val = test_results_at_val["mean_accuracy"]
+                    # self.best_test_wga = test_wga_at_val
+                    # self.best_test_mean = test_mean_acc_at_val
+                    self.logger.info(f"\nNew best test wga @ validation: {test_wga_at_val:1.3e}")
+                    self.logger.info(f"\nNew best test @ validation: {test_mean_acc_at_val:1.3e}")
+                    self.metrics[epoch].update({"best_test_wga_at_val": test_wga_at_val})
+                    self.metrics[epoch].update({"best_test_at_val": test_mean_acc_at_val})
+                    if self.use_wandb:
+                        wandb.log({"best_val_wga": self.best_val_wga}, step=epoch)
+                        wandb.log({"best_test_wga_at_val": test_wga_at_val}, step=epoch)
+                        wandb.log({"best_test_mean_acc_at_val": test_mean_acc_at_val}, step=epoch)
+                    save_checkpoint(model.state_dict(), join(self.args.output_dir, 'best_checkpoint.pt'))
+
+            test_results = get_results(results_dict['test'])
+            test_wga = test_results["worst_accuracy"]
+            test_mean_acc = test_results["mean_accuracy"]
+            if test_wga > self.best_test_wga:
+                self.logger.info(f"\nNew best test wga: {test_wga:1.3e}")
+                self.logger.info(f"\nNew best test mean acc at best wga: {test_mean_acc:1.3e}")
+                self.best_test_wga = test_wga
+                # self.best_test_mean = test_mean_acc
                 if self.use_wandb:
-                    wandb.log({"best_val_wga": self.best_val_wga}, step=epoch)
-                    wandb.log({"best_test_wga_at_val": test_at_val}, step=epoch)
-                save_checkpoint(model.state_dict(), join(self.args.output_dir, 'best_checkpoint.pt'))
+                    wandb.log({"best_test_wga": self.best_test_wga}, step=epoch)
+                    wandb.log({"best_test_mean_acc": test_mean_acc}, step=epoch)
 
-        test_wga = get_results(results_dict["test"])["worst_accuracy"]
-        if test_wga > self.best_test_wga:
-            self.logger.info(f"\nNew best test wga: {test_wga:1.3e}")
-            self.best_test_wga = test_wga
-            if self.use_wandb:
-                wandb.log({"best_test_wga": self.best_test_wga}, step=epoch)
+            self.metrics[epoch].update({
+                "best_val_wga": self.best_val_wga,
+                "best_test_wga": self.best_test_wga
+            })
+            save_checkpoint(model.state_dict(), join(self.args.output_dir, f'checkpoint_{epoch}.pt'))
+        else:
+            if "val" in results_dict.keys():
+                val_mean = get_results(results_dict["val"])["mean_accuracy"]
+                val_wga = get_results(results_dict["val"])["worst_accuracy"]
+                if val_mean > self.best_val_mean:
+                    self.logger.info(f"\nNew best validation Acc: {val_mean:1.3e}")
+                    self.logger.info(f"\nNew best validation wga: {val_wga:1.3e}")
+                    self.best_val_mean = val_mean
+                    self.best_val_wga = val_wga
 
-        self.metrics[epoch].update({
-            "best_val_wga": self.best_val_wga,
-            "best_test_wga": self.best_test_wga
-        })
-        save_checkpoint(model.state_dict(), join(self.args.output_dir, f'checkpoint_{epoch}.pt'))
+                    test_results_at_val = get_results(results_dict['test'])
+                    test_wga_at_val = test_results_at_val["worst_accuracy"]
+                    test_mean_acc_at_val = test_results_at_val["mean_accuracy"]
+                    # self.best_test_wga = test_wga_at_val
+                    # self.best_test_mean = test_mean_acc_at_val
+                    self.logger.info(f"\nNew best test wga @ validation: {test_wga_at_val:1.3e}")
+                    self.logger.info(f"\nNew best test @ validation: {test_mean_acc_at_val:1.3e}")
+                    self.metrics[epoch].update({"best_test_wga_at_val": test_wga_at_val})
+                    self.metrics[epoch].update({"best_test_at_val": test_mean_acc_at_val})
+                    if self.use_wandb:
+                        wandb.log({"best_val_acc": self.best_val_mean}, step=epoch)
+                        wandb.log({"best_val_wga": self.best_val_wga}, step=epoch)
+                        wandb.log({"best_test_wga_at_val": test_wga_at_val}, step=epoch)
+                        wandb.log({"best_test_mean_acc_at_val": test_mean_acc_at_val}, step=epoch)
+                    save_checkpoint(model.state_dict(), join(self.args.output_dir, 'best_checkpoint.pt'))
+
+            test_results = get_results(results_dict['test'])
+            test_wga = test_results["worst_accuracy"]
+            test_mean_acc = test_results["mean_accuracy"]
+            if test_wga > self.best_test_wga:
+                self.logger.info(f"\nNew best test wga: {test_wga:1.3e}")
+                self.logger.info(f"\nNew best test mean acc at best wga: {test_mean_acc:1.3e}")
+                self.best_test_wga = test_wga
+                # self.best_test_mean = test_mean_acc
+                if self.use_wandb:
+                    wandb.log({"best_test_wga": self.best_test_wga}, step=epoch)
+                    wandb.log({"best_test_mean_acc": test_mean_acc}, step=epoch)
+
+            self.metrics[epoch].update({
+                "best_val_acc": self.best_val_mean,
+                "best_val_wga": self.best_val_wga,
+                "best_test_mean_acc": test_mean_acc,
+                "best_test_wga": self.best_test_wga
+            })
+            save_checkpoint(model.state_dict(), join(self.args.output_dir, f'checkpoint_{epoch}.pt'))
 
 
 class EmbeddingsLogger(TrainLogger):
