@@ -8,7 +8,7 @@ def main():
     dataset = 'MultiNLI' #'waterbirds'
     args = SimpleNamespace(
         dataset_name=dataset,
-        bert_version=1,
+        base_model_version=1,
         cpns_version=0,
         reweight_version=0,
         n_exp=0,

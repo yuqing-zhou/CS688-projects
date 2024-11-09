@@ -50,7 +50,7 @@ def wandb_project_name(dataset, bert_version, cpns_version, reweight_version):
     return project_name
 
 
-def wandb_exp_name(DATASET_NAME, bert_version, cpns_version, reweight_version, n_exp, lr, feature_size, reg_disentangle, reg_causal, gamma, weight_decay=0):
+def wandb_exp_name(DATASET_NAME, base_model_version, cpns_version, reweight_version, n_exp, lr, feature_size, reg_disentangle, reg_causal, gamma, weight_decay=0):
     # name = f"{DATASET_NAME}_{n_exp}_disentangle_cov_reg_{bert_version}_{cpns_version}_{reweight_version}_{feature_size}_{lr}_{reg_disentangle}_{reg_causal}_{gamma}_{weight_decay}"
-    name = f"{DATASET_NAME}_{n_exp}-AFR-bert_{bert_version}_{cpns_version}_{reweight_version}_{feature_size}_{lr}_{reg_disentangle}_{reg_causal}_{gamma}_{weight_decay}"
+    name = f"{DATASET_NAME}_{n_exp}-AFR-bert_{base_model_version}_{cpns_version}_{reweight_version}_{feature_size}_{lr}_{reg_disentangle}_{reg_causal}_{gamma}_{weight_decay}"
     return name

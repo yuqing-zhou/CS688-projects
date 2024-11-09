@@ -31,7 +31,7 @@ E = 1
 F = 0  # 250 #200
 
 def train_civil(args):
-    bert_version = args.bert_version
+    base_model_version = args.base_model_version
     cpns_version = args.cpns_version
     reweight_version = args.reweight_version
     n_exp = args.n_exp
@@ -67,16 +67,16 @@ def train_civil(args):
     print("Using device:", device)
 
     if finetune_flg == True:
-        load_model_path = model_save_path + f'final_model_{bert_version}.pth'
-        best_model_path = model_save_path + f'best_model_{bert_version}_{cpns_version}_{reweight_version}.pth'
-        final_model_path = model_save_path + f'final_model_{bert_version}_{cpns_version}_{reweight_version}.pth'
+        load_model_path = model_save_path + f'final_model_{base_model_version}.pth'
+        best_model_path = model_save_path + f'best_model_{base_model_version}_{cpns_version}_{reweight_version}.pth'
+        final_model_path = model_save_path + f'final_model_{base_model_version}_{cpns_version}_{reweight_version}.pth'
         load_local_model = True
         reg_causal = args.reg_causal
         disentangle_en = False
         counterfactual_en = False #True
     else:
-        best_model_path = model_save_path + f'best_model_{bert_version}.pth'
-        final_model_path = model_save_path + f'final_model_{bert_version}.pth'
+        best_model_path = model_save_path + f'best_model_{base_model_version}.pth'
+        final_model_path = model_save_path + f'final_model_{base_model_version}.pth'
         load_local_model = False
         reg_causal = 0
         disentangle_en = False
@@ -87,13 +87,13 @@ def train_civil(args):
     else:
         gamma = 0
 
-    project_name = wandb_project_name(DATASET, bert_version, cpns_version, reweight_version)
-    exp_name = wandb_exp_name(DATASET, bert_version, cpns_version, reweight_version, n_exp, lr, feature_size,
+    project_name = wandb_project_name(DATASET, base_model_version, cpns_version, reweight_version)
+    exp_name = wandb_exp_name(DATASET, base_model_version, cpns_version, reweight_version, n_exp, lr, feature_size,
                               reg_disentangle, reg_causal, gamma)
     wandb.init(
         # set the wandb project where this run will be logged
         project=project_name,  # "robust-learning",
-        name=exp_name,  # f"disentangle_cov_reg_{bert_version}_{cpns_version}_{reweight_version}",
+        name=exp_name,  # f"disentangle_cov_reg_{base_model_version}_{cpns_version}_{reweight_version}",
         # notes="Bert with the regularization of the covariance matrix of the input of the last layer",
         # notes="Finetune the disentangled Bert, with the causality constraints, initialize the last later",
         notes="Finetune the disentangled Bert, with the causality constraints, initialize the last later, reweights the CE loss",
@@ -252,7 +252,7 @@ def train_civil(args):
 
 
 def train_nli(args):
-    bert_version = args.bert_version
+    base_model_version = args.base_model_version
     cpns_version = args.cpns_version
     reweight_version = args.reweight_version
     n_exp = args.n_exp
@@ -291,16 +291,16 @@ def train_nli(args):
     print("Using device:", device)
 
     if finetune_flg == True:
-        load_model_path = model_save_path + f'final_model_{bert_version}.pth'
-        best_model_path = model_save_path + f'best_model_{bert_version}_{cpns_version}_{reweight_version}.pth'
-        final_model_path = model_save_path + f'final_model_{bert_version}_{cpns_version}_{reweight_version}.pth'
+        load_model_path = model_save_path + f'final_model_{base_model_version}.pth'
+        best_model_path = model_save_path + f'best_model_{base_model_version}_{cpns_version}_{reweight_version}.pth'
+        final_model_path = model_save_path + f'final_model_{base_model_version}_{cpns_version}_{reweight_version}.pth'
         load_local_model = True
         reg_causal = args.reg_causal
         disentangle_en = False
         counterfactual_en =  False #True
     else:
-        best_model_path = model_save_path + f'best_model_{bert_version}.pth'
-        final_model_path = model_save_path + f'final_model_{bert_version}.pth'
+        best_model_path = model_save_path + f'best_model_{base_model_version}.pth'
+        final_model_path = model_save_path + f'final_model_{base_model_version}.pth'
         load_local_model = False
         reg_causal = 0
         disentangle_en = False
@@ -311,13 +311,13 @@ def train_nli(args):
     else:
         gamma = 0
 
-    project_name = wandb_project_name(DATASET, bert_version, cpns_version, reweight_version)
-    exp_name = wandb_exp_name(DATASET, bert_version, cpns_version, reweight_version, n_exp, lr, feature_size,
+    project_name = wandb_project_name(DATASET, base_model_version, cpns_version, reweight_version)
+    exp_name = wandb_exp_name(DATASET, base_model_version, cpns_version, reweight_version, n_exp, lr, feature_size,
                               reg_disentangle, reg_causal, gamma)
     wandb.init(
         # set the wandb project where this run will be logged
         project=project_name,  # "robust-learning",
-        name=exp_name,  # f"disentangle_cov_reg_{bert_version}_{cpns_version}_{reweight_version}",
+        name=exp_name,  # f"disentangle_cov_reg_{base_model_version}_{cpns_version}_{reweight_version}",
         # notes="Bert with the regularization of the covariance matrix of the input of the last layer",
         # notes="Finetune the disentangled Bert, with the causality constraints, initialize the last later",
         notes="Finetune the disentangled Bert, with the causality constraints, initialize the last later, reweights the CE loss",
@@ -510,7 +510,7 @@ def train_nli(args):
 
 
 def train_cv(args):
-    bert_version = args.bert_version  # 0 # 147 #190 #215 #
+    base_model_version = args.base_model_version  # 0 # 147 #190 #215 #
     cpns_version = args.cpns_version
     reweight_version = args.reweight_version
     n_exp = args.n_exp
@@ -548,17 +548,17 @@ def train_cv(args):
     total_weights = None
 
     if finetune_flg == True:
-        output_dir = os.path.join(model_save_path, f'model_{bert_version}_{cpns_version}_{reweight_version}')
-        load_model_path = os.path.join(model_save_path, f'model_{bert_version}_0_0')
-        # load_model_path = model_save_path + f'best_model_{bert_version}.pth'
-        # best_model_path = model_save_path + f'best_model_{bert_version}_{cpns_version}_{reweight_version}.pth'
+        output_dir = os.path.join(model_save_path, f'model_{base_model_version}_{cpns_version}_{reweight_version}')
+        load_model_path = os.path.join(model_save_path, f'model_{base_model_version}_0_0')
+        # load_model_path = model_save_path + f'best_model_{base_model_version}.pth'
+        # best_model_path = model_save_path + f'best_model_{base_model_version}_{cpns_version}_{reweight_version}.pth'
         load_local_model = True
         reg_causal = args.reg_causal
         disentangle_en = False
         counterfactual_en = True
     else:
-        output_dir = os.path.join(model_save_path, f'model_{bert_version}_{cpns_version}_{reweight_version}')
-        # best_model_path = model_save_path + f'best_model_{bert_version}.pth'
+        output_dir = os.path.join(model_save_path, f'model_{base_model_version}_{cpns_version}_{reweight_version}')
+        # best_model_path = model_save_path + f'best_model_{base_model_version}.pth'
         load_local_model = False
         reg_causal = 0
         disentangle_en = True
@@ -569,8 +569,8 @@ def train_cv(args):
     else:
         gamma = 0
 
-    project_name = wandb_project_name(DATASET, bert_version, cpns_version, reweight_version)
-    exp_name = wandb_exp_name(DATASET, bert_version, cpns_version, reweight_version, n_exp, lr, feature_size,
+    project_name = wandb_project_name(DATASET, base_model_version, cpns_version, reweight_version)
+    exp_name = wandb_exp_name(DATASET, base_model_version, cpns_version, reweight_version, n_exp, lr, feature_size,
                               reg_disentangle, reg_causal, gamma, weight_decay)
 
     task_config = SimpleNamespace(
