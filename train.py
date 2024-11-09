@@ -52,6 +52,7 @@ def train_civil(args):
     reweight_flg = args.reweight_flg  # True
     weight_decay = args.weight_decay
     load_best_model = args.load_best_model
+    max_grad_norm = args.max_grad_norm
 
     root_dir = '../data/'
     data_dir = root_dir + 'datasets/'
@@ -199,7 +200,7 @@ def train_civil(args):
 
             logits, loss = model(input_ids, attention_mask, labels, weights)
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
             scheduler.step()
             optimizer.step()
             accuracy = compute_accuracy(logits, labels)
@@ -273,6 +274,7 @@ def train_nli(args):
     reweight_flg = args.reweight_flg  # True
     weight_decay = args.weight_decay
     load_best_model = args.load_best_model
+    max_grad_norm = args.max_grad_norm
 
     root_dir = '../data/'
     if DATASET == 'civilcomments':
@@ -458,7 +460,7 @@ def train_nli(args):
             logits, loss = model(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=segment_ids,
                                  labels=labels, weights=weights)
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
             scheduler.step()
             optimizer.step()
             accuracy = compute_accuracy(logits, labels)
@@ -514,25 +516,25 @@ def train_cv(args):
     cpns_version = args.cpns_version
     reweight_version = args.reweight_version
     n_exp = args.n_exp
+    seed = seeds[n_exp]
+    set_seed(seed)
 
     reg_disentangle = args.reg_disentangle  # 1 #0.1 # 1.0 # 0.5 #
     lr = args.lr
     momentum = args.momentum
-    weight_decay = args.weight_decay
     n_epochs = args.n_epochs
     batch_size = args.batch_size
     model_name = args.model_name
-
     dfr_reweighting_frac = args.dfr_reweighting_frac  # 0.2
     DATASET = args.dataset_name
-    num_classes = DATASET_INFO[DATASET]['num_classes']
 
+    num_classes = DATASET_INFO[DATASET]['num_classes']
     feature_size = args.feature_size
     finetune_flg = args.finetune_flg  # True #
     reweight_flg = args.reweight_flg  # True
-
-    seed = seeds[n_exp]
-    set_seed(seed)
+    weight_decay = args.weight_decay
+    load_best_model = args.load_best_model
+    max_grad_norm = args.max_grad_norm
 
     root_dir = '../data/'
     data_dir = os.path.join(root_dir, DATASET_INFO[DATASET]['dataset_path'])
@@ -540,29 +542,30 @@ def train_cv(args):
     if not os.path.exists(model_save_path):
         os.makedirs(model_save_path)
 
+    total_weights = None
     best_model = None
     best_loss = float('inf')
     best_acc_wg = 0
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Using device:", device)
-    total_weights = None
 
     if finetune_flg == True:
         output_dir = os.path.join(model_save_path, f'model_{base_model_version}_{cpns_version}_{reweight_version}')
         load_model_path = os.path.join(model_save_path, f'model_{base_model_version}_0_0')
-        # load_model_path = model_save_path + f'best_model_{base_model_version}.pth'
-        # best_model_path = model_save_path + f'best_model_{base_model_version}_{cpns_version}_{reweight_version}.pth'
         load_local_model = True
         reg_causal = args.reg_causal
         disentangle_en = False
-        counterfactual_en = True
+        counterfactual_en = False #True
+        training_frac = -args.dfr_reweighting_frac
+        data_transform='NoAugWaterbirdsCelebATransform'
     else:
         output_dir = os.path.join(model_save_path, f'model_{base_model_version}_{cpns_version}_{reweight_version}')
-        # best_model_path = model_save_path + f'best_model_{base_model_version}.pth'
         load_local_model = False
         reg_causal = 0
-        disentangle_en = True
+        disentangle_en = False #True
         counterfactual_en = False
+        training_frac = 1-args.dfr_reweighting_frac
+        data_transform = DATASET_INFO[DATASET]['transform']
 
     if reweight_flg == True:
         gamma = args.gamma_reweight
@@ -583,9 +586,9 @@ def train_cv(args):
         save_freq=10,
         data_dir=data_dir,
         dataset='SpuriousDataset',
-        data_transform='NoAugWaterbirdsCelebATransform',
-        model='imagenet_resnet50_pretrained',
-        train_prop=(1 - args.dfr_reweighting_frac),  # -0.2, # 0.8, #
+        data_transform=data_transform,
+        model=args.model_name,
+        train_prop=training_frac,  # -0.2, # 0.8, #
         num_epochs=n_epochs,
         optimizer='sgd_optimizer',  # 'adamw_optimizer', #
         scheduler='constant_lr_scheduler',
@@ -607,15 +610,15 @@ def train_cv(args):
                                reg_causal=reg_causal, disentangle_en=disentangle_en,
                                counterfactual_en=counterfactual_en).to(device)
     if load_local_model:
-        model.load_state_dict(torch.load(os.path.join(load_model_path, 'best_checkpoint.pt'), map_location=device))
-        # model.load_state_dict(torch.load(os.path.join(load_model_path, 'final_checkpoint.pt'), map_location=device))
-        model = model_parameters_freeze(model)
+        # model.load_state_dict(torch.load(os.path.join(load_model_path, 'best_checkpoint.pt'), map_location=device))
+        model.load_state_dict(torch.load(os.path.join(load_model_path, 'final_checkpoint.pt'), map_location=device))
+
 
     optimizer = getattr(optimizers, task_config.optimizer)(model, task_config)
     Log = TrainLogger(task_config)
     scheduler = getattr(optimizers, task_config.scheduler)(optimizer, task_config)
     # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
 
     if reweight_flg == True:
         with torch.no_grad():
@@ -634,10 +637,12 @@ def train_cv(args):
             all_train_y_true = torch.cat(all_train_y_true, axis=0)
             all_group_ids = torch.cat(all_group_ids, axis=0)
 
-            total_weights = compute_weights1(all_train_logits, all_train_y_true, gamma, True, all_group_ids)
+            total_weights = compute_weights(all_train_logits, all_train_y_true, gamma, True, all_group_ids)
+
+    if load_local_model:
+        model = model_parameters_freeze(model)
 
     for epoch in range(n_epochs):
-
         model.train()
         loss_meter = AverageMeter()
         acc_groups = {g_idx: AverageMeter() for g_idx in train_loader.dataset.active_groups}
@@ -650,10 +655,11 @@ def train_cv(args):
             batch_end_idx = batch_start_idx + len(y)
             weights = total_weights[batch_start_idx:batch_end_idx] if total_weights is not None else None
             batch_start_idx = batch_end_idx
-
             optimizer.zero_grad()
             logits, loss = model(x, y, weights)
             loss.backward()
+            if max_grad_norm > 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
             optimizer.step()
             loss_meter.update(loss, x.size(0))
             preds = torch.argmax(logits, dim=1)
