@@ -591,7 +591,7 @@ def train_cv(args):
         train_prop=training_frac,  # -0.2, # 0.8, #
         num_epochs=n_epochs,
         optimizer='sgd_optimizer',  # 'adamw_optimizer', #
-        scheduler='constant_lr_scheduler',
+        scheduler=args.scheduler, #'constant_lr_scheduler',
         init_lr=lr,
         momentum=momentum,
         weight_decay=weight_decay,
@@ -669,7 +669,8 @@ def train_cv(args):
             pbar.set_description(text)
             # break
         # if epoch < 40 and lr > 1e-5:
-        scheduler.step()
+        if scheduler is not None:
+            scheduler.step()
 
         Log.logger.info(f"E: {epoch} | L: {loss_meter.avg:2.5e}\n")
         Log.log_train_results_and_save_chkp(epoch, acc_groups, model, optimizer, scheduler)
